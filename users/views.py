@@ -29,7 +29,6 @@ class LoginView(APIView):
         username:str|None = request.data.get('username')
         password:str|None = request.data.get('password')
         user:User|None = authenticate(username=username, password=password)
-        print(User.objects.get(username=username))
 
         if isinstance(user, User):
             token:Token = get_object_or_404(Token, user=user)
@@ -46,6 +45,15 @@ class UserListView(APIView):
         serializer:UserSerializer = UserSerializer(users, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
+class UserCreateAddressView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request:Request) -> Response:
+        user:User|AnonymousUser = request.user
+        address:Address = Address.objects.create(**request.data)
+        user.address = address 
+        user.save()
+        return Response(status=HTTP_201_CREATED)
 
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -68,3 +76,38 @@ class UserDetailView(APIView):
         user.delete()
         return Response(status=HTTP_200_OK)
 
+class AddressListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request:Request) -> Response:
+        addresses:Iterable = Address.objects.all()
+        serializer:AddressSerializer = AddressSerializer(addresses, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    def post(self, request:Request) -> Response:
+        serializer:AddressSerializer = AddressSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=HTTP_201_CREATED)
+        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
+class AddressDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request:Request, pk:int) -> Response:
+        address:Address = get_object_or_404(Address, pk=pk)
+        serializer:AddressSerializer = AddressSerializer(address)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    def put(self, request:Request, pk:int) -> Response:
+        address:Address = get_object_or_404(Address, pk=pk)
+        serializer:AddressSerializer = AddressSerializer(instance=address, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=HTTP_200_OK)
+        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
+    def delete(self, request:Request, pk:int) -> Response:
+        address:Address = get_object_or_404(Address, pk=pk)
+        address.delete()
+        return Response(status=HTTP_200_OK)
