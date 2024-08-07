@@ -50,7 +50,7 @@ class UserCreateAddressTest(BaseTest):
     """Test for user address creation"""
 
     @override
-    def setUp(self):
+    def setUp(self) -> None:
         self.address_data = {
             "street": "teststreet",
             "city": "testcity",
@@ -58,9 +58,9 @@ class UserCreateAddressTest(BaseTest):
             "zip_code": "l5859",
             "number": "testnumber",
         }
-        token = self._login()
+        token: str = self._login()
         self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
-        self.url = reverse("user-create-address")
+        self.url: str = reverse("user-create-address")
 
     def test_user_create_address(self) -> None:
         """test if and address can be created"""
@@ -72,7 +72,7 @@ class SigUpTest(BaseTest):
     """Test class if the user can sign up"""
 
     @override
-    def setUp(self):
+    def setUp(self) -> None:
         self.user_data = {
             "username": "testuser",
             "email": "test@test.com",
@@ -81,7 +81,7 @@ class SigUpTest(BaseTest):
             # 'address': self._create_address(),
         }
 
-        self.url = reverse("signup")
+        self.url: str = reverse("signup")
 
         return super().setUp()
 
@@ -110,14 +110,14 @@ class LoginTest(BaseTest):
     """class for login tests"""
 
     @override
-    def setUp(self):
+    def setUp(self) -> None:
         self.user_data = {
             "username": "testuser",
             "email": "test@test.com",
             "password": "testpassword",
         }
 
-        self.url = reverse("login")
+        self.url: str = reverse("login")
         self.client.post(reverse("signup"), self.user_data)
 
     def test_login(self) -> None:
@@ -149,7 +149,7 @@ class AddressCreationTest(BaseTest):
     """class for address creation tests"""
 
     @override
-    def setUp(self):
+    def setUp(self) -> None:
         self.address_data = {
             "street": "teststreet",
             "city": "testcity",
@@ -157,7 +157,7 @@ class AddressCreationTest(BaseTest):
             "zip_code": "l5859",
             "number": "testnumber",
         }
-        self.url = reverse("address-list")
+        self.url: str = reverse("address-list")
 
     def test_address_creation(self) -> None:
         """Test if the address is created"""
@@ -179,7 +179,7 @@ class AddressDetailTest(BaseTest):
     """Test class for addres information"""
 
     @override
-    def setUp(self):
+    def setUp(self) -> None:
         self.address_data = {
             "street": "teststreet",
             "city": "testcity",
@@ -187,11 +187,11 @@ class AddressDetailTest(BaseTest):
             "zip_code": "l5859",
             "number": "testnumber",
         }
-        self.url = reverse("address-list")
+        self.url: str = reverse("address-list")
         token = self._login()
         self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
-        response = self.client.post(self.url, self.address_data)
-        self.address_id = response.data.get("id")
+        response: Response = self.client.post(self.url, self.address_data)
+        self.address_id: int = response.data.get("id")
         self.url = reverse("address-detail", args=[self.address_id])
 
     def test_address_detail(self) -> None:
@@ -206,8 +206,3 @@ class AddressDetailTest(BaseTest):
             response.data.get("zip_code"), self.address_data.get("zip_code")
         )
         self.assertEqual(response.data.get("number"), self.address_data.get("number"))
-
-    # def test_address_detail_invalid_id(self):
-    #     response:Response= self.client.get(reverse('address-detail', args=[100]))
-    #     self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-    #     self.assertEqual(response.data, None)

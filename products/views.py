@@ -30,7 +30,9 @@ class CategoryListView(APIView):
 
     def post(self, request: Request) -> Response:
         """Create a new Category"""
-        serializer: CategorySerializer = CategorySerializer(data=request.data)
+        request_data: dict[str, str] = request.data
+
+        serializer: CategorySerializer = CategorySerializer(data=request_data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, HTTP_201_CREATED)
