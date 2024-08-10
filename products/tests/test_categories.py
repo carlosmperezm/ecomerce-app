@@ -11,12 +11,13 @@ class CategoryTest(BaseTestCaseSetUp):
 
     def test_get_categories_list_with_categories_created(self) -> None:
         """Test if a get petition to this url retorn a list of all the categories"""
-        categories_created: int = self._create_categories(8)
+        categories_to_create: int = 8
+        self._create_categories(categories_to_create)
         response: Response = self.client.get(self.categories_list_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data, list)
-        self.assertEqual(len(response.data), categories_created)
+        self.assertEqual(len(response.data), categories_to_create)
 
     def test_get_categories_list_with_no_categories(self) -> None:
         """Test if the api send a 404 error code if there's any categories"""

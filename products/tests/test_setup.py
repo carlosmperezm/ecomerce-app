@@ -1,6 +1,6 @@
 """Test for Products app"""
 
-from typing import override
+from typing import override, Any
 
 from django.urls import reverse
 
@@ -12,8 +12,15 @@ class BaseTestCaseSetUp(APITestCase):
 
     categories_list_url: str = reverse("categories-list")
     products_list_url: str = reverse("products-list")
-    product_detail_url: str = reverse("product-detail", kwargs={"pk": 1})
+
     category_data: dict[str, str] = {"category_name": "underwears"}
+    product_data: dict[str, Any] = {
+        "name": "shorts",
+        "price": 20,
+        "quantity_in_stock": 50,
+        "category": "category1",
+        "description": "This is a description",
+    }
 
     @override
     def setUp(self) -> None:
@@ -23,28 +30,36 @@ class BaseTestCaseSetUp(APITestCase):
     def tearDown(self) -> None:
         return super().tearDown()
 
-    def _create_categories(self, quantity: int) -> int:
-        """Create a some of categories
-        Return the number of categories created"""
-        categories_list_names: tuple[str, ...] = (
-            "underwear",
-            "pants",
-            "men",
-            "gym",
-            "women",
-            "shorts",
-        )
+    def product_detail_url(self, pk: int) -> str:
+        """Return the url for the product detail view"""
+        return reverse("product-detail", kwargs={"pk": pk})
 
-        if quantity >= len(categories_list_names):
-            for category_name in categories_list_names:
-                self.client.post(
-                    self.categories_list_url, {"category_name": category_name}
-                )
-            return len(categories_list_names)
+    def clean_product_data(self, product: dict[str, Any]) -> dict:
+        """Clean the product data
+        return a dict with the cleaned data
+        """
+        product.pop("id")
+        product["category"] = product["category"]["category_name"]
+        return product
 
-        for index, category_name in enumerate(categories_list_names):
-            if quantity == index:
-                return quantity
-            self.client.post(self.categories_list_url, {"category_name": category_name})
+    def _create_categories(self, quantity: int) -> None:
+        """Create a some of categories"""
+        for i in range(quantity):
+            self.client.post(
+                self.categories_list_url, {"category_name": "category" + str(i)}
+            )
 
-        return 0
+    def _create_products(self, quantity: int) -> None:
+        """Create a some of products"""
+        self._create_categories(quantity)
+
+        for i in range(quantity):
+            self.client.post(
+                self.products_list_url,
+                {
+                    "name": "product" + str(i),
+                    "category": "category" + str(i),
+                    "quantity_in_stock": 10,
+                    "price": 10.0,
+                },
+            )
