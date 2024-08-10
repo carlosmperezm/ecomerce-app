@@ -98,7 +98,6 @@ class SigUpTest(BaseTest):
         self.assertEqual(
             response.data.get("phone_number"), self.user_data.get("phone_number")
         )
-        # self.assertEqual(response.data.get('address'), self.user_data.get('address'))
 
     def test_signup_invalid_data(self) -> None:
         """test if the user insert not data the api responds with a 400 error code"""

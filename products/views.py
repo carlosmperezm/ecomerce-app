@@ -84,4 +84,4 @@ class ProductDetailView(APIView):
         """Delete a product by id"""
         product: Product = get_object_or_404(Product, pk=pk)
         product.delete()
-        return Response(HTTP_204_NO_CONTENT)
+        return Response(status=HTTP_204_NO_CONTENT)
