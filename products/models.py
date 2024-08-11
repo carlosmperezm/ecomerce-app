@@ -10,6 +10,7 @@ from django.db.models import (
     IntegerField,
     ForeignKey,
     SET_NULL,
+    Manager,
 )
 
 
@@ -17,6 +18,7 @@ class Category(Model):
     """Categories model"""
 
     category_name: CharField = CharField(max_length=100)
+    objects = Manager()
 
 
 class Product(Model):
@@ -29,6 +31,8 @@ class Product(Model):
     category: ForeignKey = ForeignKey(
         Category, null=True, blank=True, on_delete=SET_NULL
     )
+
+    objects = Manager()
 
     @override
     def __str__(self) -> str:
