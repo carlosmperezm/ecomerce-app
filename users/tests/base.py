@@ -7,6 +7,10 @@ from django.urls import reverse
 from rest_framework.response import Response
 from rest_framework.test import APITestCase
 
+EMAIL: str = "test@test.com"
+USERNAME: str = "testuser"
+PASSWORD: str = "testpassword"
+
 
 class BaseTest(APITestCase):
     """Class base to set up all the pervious data and methods"""
@@ -24,9 +28,9 @@ class BaseTest(APITestCase):
         }
 
         self.user_data: dict[str, Any] = {
-            "username": "testuser",
-            "email": "test@test.com",
-            "password": "testpassword",
+            "username": USERNAME,
+            "email": EMAIL,
+            "password": PASSWORD,
         }
 
         # URLS
@@ -41,23 +45,44 @@ class BaseTest(APITestCase):
         """Return the address detail url"""
         return reverse("address-detail", args=[pk])
 
-    def login(self) -> str:
+    def get_tokens(self, quantity: int) -> dict[str, str]:
         """Login the user and return the token key as string"""
-        self.user_data = {
-            "username": "testuser",
-            "email": "test@test.com",
-            "password": "testpassword",
-        }
-        self.client.post(reverse("signup"), self.user_data)
-        response: Response = self.client.post(reverse("login"), self.user_data)
-        return response.data.get("token")
+        tokens: dict[str, str] = {}
+        user_data: dict[str, str] = {}
+
+        for i in range(1, quantity + 1):
+            user_data = {
+                "username": USERNAME + str(i),
+                "email": str(i) + EMAIL,
+                "password": PASSWORD,
+            }
+
+            self.client.post(reverse("signup"), user_data)
+            response: Response = self.client.post(reverse("login"), user_data)
+            tokens["testuser" + str(i)] = response.data.get("token")
+
+        return tokens
+
+    def signup(self, quantity: int) -> list[dict[str, str]]:
+        """Create many users base on the quantity"""
+        users: list[dict[str, str]] = []
+        for i in range(1, quantity + 1):
+            user_data = {
+                "username": USERNAME + str(i),
+                "email": str(i) + EMAIL,
+                "password": PASSWORD,
+            }
+            users.append(user_data)
+        return users
 
     def create_address(self, quantity: int) -> None:
         """Create many addresses base on the quantity"""
-        token: str = self.login()
-        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+        tokens: dict[str, str] = self.get_tokens(quantity)
 
         for i in range(1, quantity + 1):
+            self.client.credentials(
+                HTTP_AUTHORIZATION="Token " + tokens.get("testuser" + str(i), "")
+            )
             self.client.post(
                 reverse("address-list"),
                 {
@@ -66,5 +91,6 @@ class BaseTest(APITestCase):
                     "state": "CA",
                     "zip_code": "l5859",
                     "number": "testnumber" + str(i),
+                    "user": i,
                 },
             )

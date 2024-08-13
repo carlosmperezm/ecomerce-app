@@ -11,7 +11,7 @@ class AddressCreationTest(BaseTest):
 
     def test_address_creation(self) -> None:
         """Test if the address is created"""
-        token: str = self.login()
+        token: str = self.get_tokens(1).get("testuser1", "")
         self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
         response: Response = self.client.post(self.address_list_url, self.address_data)
 
@@ -30,8 +30,12 @@ class AddressDetailTest(BaseTest):
 
     def test_address_detail(self) -> None:
         """Test if addres detail can corretcly be retreived"""
-        self.create_address(5)
-        address_id: int = 5
+        self.create_address(2)
+        address_id: int = 1
+
+        token: str = self.get_tokens(1).get("testuser1", "")
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+
         response: Response = self.client.get(self.address_detail_url(address_id))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -40,3 +44,31 @@ class AddressDetailTest(BaseTest):
         self.assertEqual(response.data.get("state"), "CA")
         self.assertEqual(response.data.get("zip_code"), "l5859")
         self.assertEqual(response.data.get("number"), "testnumber" + str(address_id))
+
+    def test_get_address_with_no_user_associed(self) -> None:
+        """Test if addres detail can corretcly be retreived"""
+        self.create_address(3)
+        tokens: dict[str, str] = self.get_tokens(2)
+        self.client.credentials(
+            HTTP_AUTHORIZATION="Token " + tokens.get("testuser1", "")
+        )
+        address_id: int = 2
+        response: Response = self.client.get(self.address_detail_url(address_id))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_address(self) -> None:
+        """Test if the address is deleted"""
+        # TODO
+
+    def test_delete_address_with_no_user_associed(self) -> None:
+        """Test if the address is deleted"""
+        # TODO
+
+    def test_update_address(self) -> None:
+        """Test if the address is updated"""
+        # TODO
+
+    def test_update_address_with_no_user_associed(self) -> None:
+        """Test if the address is updated"""
+        # TODO

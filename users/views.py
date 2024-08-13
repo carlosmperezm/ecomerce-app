@@ -15,7 +15,7 @@ from rest_framework.status import (
     HTTP_201_CREATED,
     HTTP_403_FORBIDDEN,
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.authtoken.models import Token
 
 from users.models import User, Address
@@ -115,9 +115,9 @@ class AddressListView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, _request: Request) -> Response:
+    def get(self, request: Request) -> Response:
         """Get all addresses."""
-        addresses: Iterable = Address.objects.all()
+        addresses: Iterable = Address.objects.filter(user=request.user)
         serializer: AddressSerializer = AddressSerializer(addresses, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
@@ -125,7 +125,7 @@ class AddressListView(APIView):
         """Create a new address."""
         serializer: AddressSerializer = AddressSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user)
             return Response(serializer.data, status=HTTP_201_CREATED)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
@@ -135,15 +135,19 @@ class AddressDetailView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, _request: Request, pk: int) -> Response:
+    def get(self, request: Request, pk: int) -> Response:
         """Get an address."""
         address: Address = get_object_or_404(Address, pk=pk)
+        if address.user != request.user:
+            return Response(status=HTTP_403_FORBIDDEN)
         serializer: AddressSerializer = AddressSerializer(address)
         return Response(serializer.data, status=HTTP_200_OK)
 
     def put(self, request: Request, pk: int) -> Response:
         """Update an address."""
         address: Address = get_object_or_404(Address, pk=pk)
+        if address.user != request.user:
+            return Response(status=HTTP_403_FORBIDDEN)
         serializer: AddressSerializer = AddressSerializer(
             instance=address, data=request.data
         )
@@ -152,8 +156,10 @@ class AddressDetailView(APIView):
             return Response(serializer.data, status=HTTP_200_OK)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
-    def delete(self, _request: Request, pk: int) -> Response:
+    def delete(self, request: Request, pk: int) -> Response:
         """Delete an address."""
         address: Address = get_object_or_404(Address, pk=pk)
+        if address.user != request.user:
+            return Response(status=HTTP_403_FORBIDDEN)
         address.delete()
         return Response(status=HTTP_200_OK)
