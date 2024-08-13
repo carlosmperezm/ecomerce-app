@@ -73,11 +73,10 @@ class UserCreateAddressView(APIView):
     def post(self, request: Request) -> Response:
         """Create an address for a user."""
         user: User | AnonymousUser | AbstractBaseUser = request.user
-        address: Address = Address.objects.create(**request.data)
-        if isinstance(user, User):
-            user.address = address
-            user.save()
-            return Response(status=HTTP_201_CREATED)
+        serializer: AddressSerializer = AddressSerializer(data=request.data)
+        if serializer.is_valid() and isinstance(user, User):
+            serializer.save(user=user)
+            return Response(serializer.data, status=HTTP_201_CREATED)
         return Response(status=HTTP_400_BAD_REQUEST)
 
 

@@ -46,7 +46,16 @@ class BaseTest(APITestCase):
         return reverse("address-detail", args=[pk])
 
     def get_tokens(self, quantity: int) -> dict[str, str]:
-        """Login the user and return the token key as string"""
+        """
+        Login many users and return a dictionary with the tokens.
+
+        The users are testuser1, testuser2... and so on until the quantity is reached.
+
+        Always sign each user up before log them in to get the token
+
+        It doesn't matter if the user is already signed up, the method will log them in anyway
+        """
+
         tokens: dict[str, str] = {}
         user_data: dict[str, str] = {}
 
@@ -63,20 +72,13 @@ class BaseTest(APITestCase):
 
         return tokens
 
-    def signup(self, quantity: int) -> list[dict[str, str]]:
-        """Create many users base on the quantity"""
-        users: list[dict[str, str]] = []
-        for i in range(1, quantity + 1):
-            user_data = {
-                "username": USERNAME + str(i),
-                "email": str(i) + EMAIL,
-                "password": PASSWORD,
-            }
-            users.append(user_data)
-        return users
-
     def create_address(self, quantity: int) -> None:
-        """Create many addresses base on the quantity"""
+        """
+        Create many addresses base on the quantity
+        each address is associated with a user in the same order
+        ex: testuser1 -> testaddress1, testuser2 -> testaddress2...
+        and so on until the quantity is reached
+        """
         tokens: dict[str, str] = self.get_tokens(quantity)
 
         for i in range(1, quantity + 1):
