@@ -17,11 +17,15 @@ class SigUpTest(BaseTest):
     def test_signup(self) -> None:
         """sign up the user"""
         response: Response = self.client.post(self.signup_url, self.user_data)
-        self.create_address(4)
+        quantity: int = 5
+        self.create_address(quantity)
         self.client.put(reverse("user-detail", args=[1]), {"address": 1})
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data.get("username"), self.user_data.get("username"))
+        self.assertEqual(
+            response.data.get("username"),
+            self.user_data.get("username"),
+        )
         self.assertEqual(response.data.get("email"), self.user_data.get("email"))
         self.assertEqual(
             response.data.get("phone_number"), self.user_data.get("phone_number")
@@ -38,6 +42,7 @@ class LoginTest(BaseTest):
 
     def test_login(self) -> None:
         """test if the user has logged correctly"""
+
         self.client.post(reverse("signup"), self.user_data)
         response: Response = self.client.post(self.login_url, self.user_data)
         user: User = User.objects.get(username=self.user_data.get("username"))
@@ -70,8 +75,10 @@ class UserCreateAddressTest(BaseTest):
 
     def test_user_create_address(self) -> None:
         """test if and address can be created"""
-        token: str = self.login()
-        self.client.credentials(HTTP_AUTHORIZATION="Token " + token)
+        tokens: dict[str, str] = self.get_tokens(7)
+        self.client.credentials(
+            HTTP_AUTHORIZATION="Token " + tokens.get("testuser1", "")
+        )
         response: Response = self.client.post(
             self.create_address_url, self.address_data
         )
