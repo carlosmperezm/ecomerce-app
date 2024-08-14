@@ -59,25 +59,9 @@ class UserListView(APIView):
 
     def get(self, request: Request) -> Response:
         """Get all users."""
-        print(request.user)
         users: Iterable = User.objects.all()
         serializer: UserSerializer = UserSerializer(users, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
-
-
-class UserCreateAddressView(APIView):
-    """This view is used to create an address for a user."""
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request: Request) -> Response:
-        """Create an address for a user."""
-        user: User | AnonymousUser | AbstractBaseUser = request.user
-        serializer: AddressSerializer = AddressSerializer(data=request.data)
-        if serializer.is_valid() and isinstance(user, User):
-            serializer.save(user=user)
-            return Response(serializer.data, status=HTTP_201_CREATED)
-        return Response(status=HTTP_400_BAD_REQUEST)
 
 
 class UserDetailView(APIView):
@@ -123,7 +107,7 @@ class AddressListView(APIView):
     def post(self, request: Request) -> Response:
         """Create a new address."""
         serializer: AddressSerializer = AddressSerializer(data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid() and isinstance(request.user, User):
             serializer.save(user=request.user)
             return Response(serializer.data, status=HTTP_201_CREATED)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)

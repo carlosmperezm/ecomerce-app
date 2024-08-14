@@ -70,16 +70,29 @@ class LoginTest(BaseTest):
         self.assertIsNone(response.data)
 
 
-class UserCreateAddressTest(BaseTest):
-    """Test for user address creation"""
+class UserListViewTest(BaseTest):
+    """Test for the user list view"""
 
-    def test_user_create_address(self) -> None:
-        """test if and address can be created"""
-        tokens: dict[str, str] = self.get_tokens(7)
+    def test_user_list_view(self) -> None:
+        """Test if the user list view is working correctly"""
+        user_quantity: int = 5
         self.client.credentials(
-            HTTP_AUTHORIZATION="Token " + tokens.get("testuser1", "")
+            HTTP_AUTHORIZATION="Token "
+            + self.get_tokens(user_quantity).get("testuser1", " ")
         )
-        response: Response = self.client.post(
-            self.create_address_url, self.address_data
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        response: Response = self.client.get(self.user_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), user_quantity)
+
+    def test_user_list_view_no_auth(self) -> None:
+        """Test if the user list view is working correctly"""
+        response: Response = self.client.get(self.user_list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_list_view_invalid_auth(self) -> None:
+        """Test if the user list view is working correctly"""
+        self.client.credentials(HTTP_AUTHORIZATION="Token invalidtoken")
+        response: Response = self.client.get(self.user_list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

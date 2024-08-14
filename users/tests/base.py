@@ -34,10 +34,10 @@ class BaseTest(APITestCase):
         }
 
         # URLS
-        self.create_address_url: str = reverse("user-create-address")
         self.login_url: str = reverse("login")
         self.address_list_url: str = reverse("address-list")
         self.signup_url: str = reverse("signup")
+        self.user_list_url: str = reverse("user-list")
 
         return super().setUp()
 
