@@ -73,7 +73,6 @@ class LoginView(APIView):
 class UserListView(APIView):
     """This view is used to get all users."""
 
-    # TODO: Add Admin permissions
     permission_classes = [IsAdminUser]
 
     def get(self, _request: Request) -> Response:
@@ -86,21 +85,30 @@ class UserListView(APIView):
 class UserDetailView(APIView):
     """This view is used to get, update and delete a user."""
 
-    # TODO: Add Admin permissions
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request: Request, pk: int) -> Response:
         """Get a user."""
-        if request.user.pk != pk or not request.user.is_staff:
-            return Response(status=status.HTTP_403_FORBIDDEN)
         user: User = get_object_or_404(User, pk=pk)
+
+        if isinstance(request.user, User) and (
+            request.user.pk != pk and not request.user.is_staff
+        ):
+            return Response(
+                {"error": PERMISSION_ERROR}, status=status.HTTP_403_FORBIDDEN
+            )
+
         serializer: UserSerializer = UserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request: Request, pk: int) -> Response:
         """Update a user."""
-        if request.user.pk != pk or not request.user.is_staff:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+        if isinstance(request.user, User) and (
+            request.user.pk != pk and not request.user.is_staff
+        ):
+            return Response(
+                {"error": PERMISSION_ERROR}, status=status.HTTP_403_FORBIDDEN
+            )
         user: User = get_object_or_404(User, pk=pk)
         serializer: UserSerializer = UserSerializer(instance=user, data=request.data)
         if serializer.is_valid():
@@ -110,11 +118,15 @@ class UserDetailView(APIView):
 
     def delete(self, request: Request, pk: int) -> Response:
         """Delete a user."""
-        if request.user.pk != pk or not request.user.is_staff:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+        if isinstance(request.user, User) and (
+            request.user.pk != pk and not request.user.is_staff
+        ):
+            return Response(
+                {"error": PERMISSION_ERROR}, status=status.HTTP_403_FORBIDDEN
+            )
         user: User = get_object_or_404(User, pk=pk)
         user.delete()
-        return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AddressListView(APIView):
