@@ -4,8 +4,10 @@ from typing import override, Any
 
 from django.urls import reverse
 
-from rest_framework.response import Response
 from rest_framework.test import APITestCase
+from rest_framework.authtoken.models import Token
+
+from users.models import User, Address
 
 EMAIL: str = "test@test.com"
 USERNAME: str = "testuser"
@@ -33,6 +35,8 @@ class BaseTest(APITestCase):
             "password": PASSWORD,
         }
 
+        self._admin_user: User
+
         # URLS
         self.login_url: str = reverse("login")
         self.address_list_url: str = reverse("address-list")
@@ -41,9 +45,21 @@ class BaseTest(APITestCase):
 
         return super().setUp()
 
+    @override
+    def tearDown(self) -> None:
+        self.client.logout()
+        self.client.credentials()
+        return super().tearDown()
+
     def address_detail_url(self, pk: int) -> str:
         """Return the address detail url"""
         return reverse("address-detail", args=[pk])
+
+    def create_user_admin(self, user: dict[str, Any]) -> User:
+        """Create an admin user"""
+        self._admin_user = User.objects.create_superuser(**user)
+        Token.objects.create(user=self._admin_user)
+        return self._admin_user
 
     def get_tokens(self, quantity: int) -> dict[str, str]:
         """
@@ -57,20 +73,26 @@ class BaseTest(APITestCase):
         """
 
         tokens: dict[str, str] = {}
-        user_data: dict[str, str] = {}
 
-        for i in range(1, quantity + 1):
-            user_data = {
-                "username": USERNAME + str(i),
-                "email": str(i) + EMAIL,
-                "password": PASSWORD,
-            }
-
-            self.client.post(reverse("signup"), user_data)
-            response: Response = self.client.post(reverse("login"), user_data)
-            tokens["testuser" + str(i)] = response.data.get("token")
+        for index, user in enumerate(User.objects.all()):
+            if index == quantity:
+                break
+            tokens.setdefault(user.username, Token.objects.get(user=user).key)
 
         return tokens
+
+    def create_users(self, quantity: int) -> None:
+        """
+        Create many users base on the quantity
+        """
+        user: User
+        for i in range(1, quantity + 1):
+            user = User.objects.create_user(
+                username=USERNAME + str(i),
+                email=str(i) + EMAIL,
+                password=PASSWORD,
+            )
+            Token.objects.get_or_create(user=user)
 
     def create_address(self, quantity: int) -> None:
         """
@@ -79,20 +101,13 @@ class BaseTest(APITestCase):
         ex: testuser1 -> testaddress1, testuser2 -> testaddress2...
         and so on until the quantity is reached
         """
-        tokens: dict[str, str] = self.get_tokens(quantity)
 
         for i in range(1, quantity + 1):
-            self.client.credentials(
-                HTTP_AUTHORIZATION="Token " + tokens.get("testuser" + str(i), "")
-            )
-            self.client.post(
-                reverse("address-list"),
-                {
-                    "street": "teststreet" + str(i),
-                    "city": "testcity" + str(i),
-                    "state": "CA",
-                    "zip_code": "l5859",
-                    "number": "testnumber" + str(i),
-                    "user": i,
-                },
+            Address.objects.create(
+                street="teststreet" + str(i),
+                city="testcity" + str(i),
+                state="CA",
+                zip_code="l5859",
+                number="testnumber" + str(i),
+                user=User.objects.get(pk=i),
             )
