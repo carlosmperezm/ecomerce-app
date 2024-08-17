@@ -51,6 +51,10 @@ class BaseTest(APITestCase):
         self.client.credentials()
         return super().tearDown()
 
+    def user_detail_url(self, pk: int) -> str:
+        """Return the user detail url"""
+        return reverse("user-detail", args=[pk])
+
     def address_detail_url(self, pk: int) -> str:
         """Return the address detail url"""
         return reverse("address-detail", args=[pk])

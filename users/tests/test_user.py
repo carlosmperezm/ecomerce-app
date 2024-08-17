@@ -1,16 +1,13 @@
 """Test for the user Model"""
 
-import json
-from typing import override
-from django.urls import reverse
-from django.shortcuts import get_object_or_404
-
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
 from users.tests.base import BaseTest
 from users.models import User
+
+PERMISSION_ERROR: str = "You do not have permission to perform this action."
 
 
 class SignUpTest(BaseTest):
@@ -92,11 +89,12 @@ class LoginTest(BaseTest):
         self.assertEqual(response.data.get("error"), "Invalid credentials")
 
 
-class UserListViewTest(BaseTest):
-    """Test for the user list view"""
+class UserGetTest(BaseTest):
+    """Test for the user detail view"""
 
-    def test_user_list_view_as_admin(self) -> None:
-        """Test if the user list view is working correctly"""
+    def test_get_all_users_as_admin(self) -> None:
+        """Test if the user can access the user list view as an admin"""
+
         user_quantity: int = 5
         self.create_users(user_quantity)
         self.create_user_admin(
@@ -113,23 +111,271 @@ class UserListViewTest(BaseTest):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), user_quantity + 1)
 
-    def test_user_list_view_as_no_admin(self) -> None:
-        """Test if the user list view shows all users when the request's user is not an admin"""
-        self.create_users(2)
+    def test_get_all_users_as_no_admin(self) -> None:
+        """Test if the user can access the user list view as a regular user"""
+        self.create_users(3)
         self.client.login(username="testuser1", password="testpassword")
         response: Response = self.client.get(self.user_list_url)
         self.assertEqual(
             response.data.get("detail"),
-            "You do not have permission to perform this action.",
+            PERMISSION_ERROR,
         )
 
-    def test_user_list_view_without_login(self) -> None:
-        """Test if the user list view is working correctly"""
-        response: Response = self.client.get(self.user_list_url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_user_list_view_invalid_auth(self) -> None:
-        """Test if the user list view is working correctly"""
+    def test_get_all_users_with_invalid_auth(self) -> None:
+        """Theest if the user can access the user list view with an invalid token"""
+        self.create_users(quantity=3)
         self.client.credentials(HTTP_AUTHORIZATION="Token invalidtoken")
         response: Response = self.client.get(self.user_list_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Invalid token.",
+        )
+
+        self.client.credentials()
+        self.client.login(username="invalidusername", password="testpassword")
+        response = self.client.get(self.user_list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data.get("detail"), "Authentication credentials were not provided."
+        )
+
+    def test_get_all_users_without_login(self) -> None:
+        """Test if the user can access the user list view without login"""
+        self.create_users(5)
+        response: Response = self.client.get(self.user_list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_get_user_as_regular_user_with_no_permission(self) -> None:
+        """Test if the user cannot be accessed by a regular user if it is not the same user"""
+        self.create_users(4)
+
+        self.client.login(username="testuser1", password="testpassword")
+
+        response: Response = self.client.get(self.user_detail_url(2))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("error"),
+            PERMISSION_ERROR,
+        )
+
+        response = self.client.get(self.user_detail_url(3))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("error"),
+            PERMISSION_ERROR,
+        )
+
+    def test_get_user_as_regular_user_with_permission(self) -> None:
+        """Test if the user can be accessed by a regular user if it is the same user"""
+        self.create_users(2)
+
+        self.client.login(username="testuser1", password="testpassword")
+
+        response: Response = self.client.get(self.user_detail_url(1))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get("username"), "testuser1")
+        self.assertEqual(response.data.get("email"), "1test@test.com")
+
+    def test_get_user_as_admin(self) -> None:
+        """Test if any user can be accessed by an admin"""
+        self.create_users(3)
+        self.create_user_admin(
+            {
+                "username": "admin",
+                "email": "admin@admin.com",
+                "password": "adminpassword",
+            }
+        )
+        self.client.login(username="admin", password="adminpassword")
+
+        response: Response = self.client.get(self.user_detail_url(1))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get("username"), "testuser1")
+        self.assertEqual(response.data.get("email"), "1test@test.com")
+
+        response = self.client.get(self.user_detail_url(3))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get("username"), "testuser3")
+        self.assertEqual(response.data.get("email"), "3test@test.com")
+
+
+class UserDeleteTest(BaseTest):
+    """Test for the user delete view"""
+
+    def test_delete_user_as_admin(self) -> None:
+        """Test if the user can be deleted by an admin"""
+        self.create_users(3)  # 3 regular users
+        self.create_user_admin(
+            {
+                "username": "admin",
+                "email": "admin@admin.com",
+                "password": "adminpassword",
+            }
+        )  # 1 admin user , 4 total users
+
+        self.client.login(username="admin", password="adminpassword")
+
+        response: Response = self.client.delete(self.user_detail_url(1))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(
+            User.objects.count(), 3
+        )  # 4 users(1 admin,3 regular users) - 1 deleted = 3
+
+        response = self.client.delete(self.user_detail_url(2))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(
+            User.objects.count(), 2
+        )  # 3 users(1 admin,2 regular users) - 1 deleted = 2
+
+    def test_delete_user_as_regular_user_with_no_permission(self) -> None:
+        """Test if the user cannot be deleted by a regular user if it is not the same user"""
+        self.create_users(3)
+        self.client.login(username="testuser1", password="testpassword")
+
+        response: Response = self.client.delete(self.user_detail_url(2))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("error"),
+            PERMISSION_ERROR,
+        )
+        self.assertEqual(User.objects.count(), 3)
+
+    def test_delete_user_as_regular_user_with_permission(self) -> None:
+        """Test if the user can be deleted by a regular user if it is the same user"""
+        self.create_users(2)
+        self.client.login(username="testuser1", password="testpassword")
+
+        response: Response = self.client.delete(self.user_detail_url(1))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_delete_user_with_invalid_auth(self) -> None:
+        """Test if the user can be deleted with an invalid token"""
+        self.create_users(3)
+
+        self.client.credentials(HTTP_AUTHORIZATION="Token invalidtoken")
+        response: Response = self.client.delete(self.user_detail_url(1))
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Invalid token.",
+        )
+
+        self.client.credentials()
+        response = self.client.delete(self.user_detail_url(1))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data.get("detail"), "Authentication credentials were not provided."
+        )
+
+
+class UserUpdateTest(BaseTest):
+    """Test for the user update view"""
+
+    data_to_update: dict[str, str] = {
+        "username": "testuser1updated",
+        "email": "updatedemail@test.com",
+        "phone_number": "123456789",
+        "password": "updatedpassword",
+    }
+
+    def test_update_user_as_admin(self) -> None:
+        """Test if the user can be updated by an admin"""
+        self.create_users(3)
+        self.create_user_admin(
+            {
+                "username": "admin",
+                "email": "admin@admin.com",
+                "password": "adminpassword",
+            }
+        )
+
+        self.client.login(username="admin", password="adminpassword")
+        response: Response = self.client.put(
+            self.user_detail_url(2), self.data_to_update
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(2, response.data.pop("id"))
+        self.assertEqual(
+            self.data_to_update.get("username"), response.data.get("username")
+        )
+        self.assertEqual(self.data_to_update.get("email"), response.data.get("email"))
+        self.assertEqual(
+            self.data_to_update.get("phone_number"), response.data.get("phone_number")
+        )
+
+    def test_update_user_as_regular_user_with_no_permission(self) -> None:
+        """Test if the user cannot be updated by a regular user if it is not the same user"""
+        self.create_users(3)
+        self.client.login(username="testuser1", password="testpassword")
+
+        response: Response = self.client.put(
+            self.user_detail_url(2), self.data_to_update
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("error"),
+            PERMISSION_ERROR,
+        )
+
+    def test_update_user_as_regular_user_with_permission(self) -> None:
+        """Test if the user can be updated by a regular user if it is the same user"""
+        self.create_users(2)
+        self.client.login(username="testuser1", password="testpassword")
+
+        response: Response = self.client.put(
+            self.user_detail_url(1), self.data_to_update
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            self.data_to_update.get("username"), response.data.get("username")
+        )
+        self.assertEqual(self.data_to_update.get("email"), response.data.get("email"))
+        self.assertEqual(
+            self.data_to_update.get("phone_number"), response.data.get("phone_number")
+        )
+
+    def test_update_user_with_invalid_auth(self) -> None:
+        """Test if the user can be updated with an invalid token"""
+        self.create_users(3)
+
+        self.client.credentials(HTTP_AUTHORIZATION="Token invalidtoken")
+        response: Response = self.client.put(
+            self.user_detail_url(1), self.data_to_update
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Invalid token.",
+        )
+
+        self.client.credentials()
+        response = self.client.put(self.user_detail_url(1), self.data_to_update)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data.get("detail"), "Authentication credentials were not provided."
+        )
+
+    def test_update_user_with_invalid_data(self) -> None:
+        """Test if the user can be updated with invalid data"""
+        self.create_users(3)
+        self.client.login(username="testuser1", password="testpassword")
+
+        response: Response = self.client.put(self.user_detail_url(1), {})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
