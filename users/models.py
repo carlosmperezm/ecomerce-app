@@ -33,6 +33,26 @@ class Address(Model):
         return f"{self.street},{self.city},{self.state},{self.zip_code}"
 
 
+class CustomUserManager(UserManager):
+    """Custom User Manager"""
+
+    @override
+    def create_user(self, username, email=None, password=None, **extra_fields):
+        if not email:
+            raise ValueError("The Email field must be set")
+        email = self.normalize_email(email)
+        user = self.model(username=username, email=email, **extra_fields)
+        user.set_password(password)
+        user.save()
+        return user
+
+    @override
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        return super().create_superuser(username, email, password, **extra_fields)
+
+
 class User(AbstractUser):
     """User Model"""
 
@@ -42,10 +62,10 @@ class User(AbstractUser):
     username: CharField = CharField(max_length=100, unique=True)
     phone_number: CharField = CharField(max_length=15, null=True, blank=True)
 
-    objects = UserManager()
+    objects = CustomUserManager()
 
     REQUIRED_FIELDS = ["email"]
 
     @override
     def __str__(self) -> str:
-        return str(self.email)
+        return str(self.username)
