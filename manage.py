@@ -8,9 +8,13 @@ from ecomerce_project.settings.base import DEBUG
 def main():
     """Run administrative tasks."""
     if DEBUG:
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ecomerce_project.settings.local')
+        os.environ.setdefault(
+            "DJANGO_SETTINGS_MODULE", "ecomerce_project.settings.local"
+        )
     else:
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ecomerce_project.settings.production')
+        os.environ.setdefault(
+            "DJANGO_SETTINGS_MODULE", "ecomerce_project.settings.production"
+        )
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
@@ -22,5 +26,5 @@ def main():
     execute_from_command_line(sys.argv)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

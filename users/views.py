@@ -208,7 +208,6 @@ class AddressDetailView(APIView):
                 {"error": PERMISSION_ERROR},
                 status=status.HTTP_403_FORBIDDEN,
             )
-
         address.delete()
         return Response(
             {"message": "Address deleted successfully"}, status=status.HTTP_200_OK
