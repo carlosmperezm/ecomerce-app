@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     # My apps
     "users",
     "products",
+    "shopping_and_payments",
 ]
 
 AUTH_USER_MODEL = "users.User"
