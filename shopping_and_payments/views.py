@@ -12,8 +12,8 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework import status
 
 
-from shopping_and_payments.models import CartItem, ShoppingCart
-from shopping_and_payments.serializers import  OrderStatusSerializer, ShoppingCartSerializer, CartItemSerializer,AddToCartSerializer
+from shopping_and_payments.models import CartItem, ShoppingCart,ShopOrder
+from shopping_and_payments.serializers import  OrderStatusSerializer, ShoppingCartSerializer, CartItemSerializer,AddToCartSerializer, ShopOrderSerializer
 from products.models import Product
 from users.models import User
 
@@ -174,3 +174,26 @@ class ShoppingCartDetailView(APIView):
 
         cart.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class CreateOrderView(APIView):
+    """Create an order"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        """Create an order"""
+
+        serializer: ShopOrderSerializer = ShopOrderSerializer(data=request.data)
+
+        if serializer.is_valid():
+            print('Serializer was Valid')
+            cart:ShoppingCart = ShoppingCart.objects.get(pk=serializer.validated_data.get('cart').pk)
+
+            if cart.user != request.user:
+                return Response( {"error": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+            
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        print('Serializer was not Valid')
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

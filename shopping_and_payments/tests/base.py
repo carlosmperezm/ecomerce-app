@@ -23,6 +23,7 @@ class BaseTestCase(APITestCase):
         # URLs
         self.order_status_url: str = reverse("order_status_create")
         self.create_shopping_cart_url: str = reverse("create_shopping_cart")
+        self.create_order_url:str = reverse('create_order')
         super().setUp()
 
     @override

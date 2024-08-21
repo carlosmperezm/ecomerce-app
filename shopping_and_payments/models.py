@@ -63,12 +63,23 @@ class CartItem(Model):
 class ShopOrder(Model):
     """Shop order model"""
 
+    def total_price(self) -> int:
+        """Return the total price of the order"""
+        result:int|float = 0
+
+        for product in self.cart.products.all():
+            result += product.price
+        
+        return result
+
     cart: OneToOneField = OneToOneField(ShoppingCart, on_delete=CASCADE)
-    status: ForeignKey = ForeignKey(OrderStatus, on_delete=CASCADE)
-    total_price: IntegerField = IntegerField()
+    status: ForeignKey = ForeignKey(OrderStatus, on_delete=CASCADE,default=1)
+    total_price: int = total_price
     order_date: DateTimeField = DateTimeField(auto_now_add=True)
 
     objects = Manager()
+
+
 
     def __str__(self) -> str:
         return f"shop order # {self.pk}"

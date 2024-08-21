@@ -8,6 +8,7 @@ from shopping_and_payments.views import (
     ShoppingCartDetailView,
     AddProductsToCartView,
     UpdateProductsInCartView,
+    CreateOrderView
 )
 
 urlpatterns = [
@@ -36,4 +37,5 @@ urlpatterns = [
         UpdateProductsInCartView.as_view(),
         name="update_products_in_cart",
     ),
+    path('create-order', CreateOrderView.as_view(),name='create_order')
 ]
