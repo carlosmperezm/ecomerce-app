@@ -197,3 +197,16 @@ class CreateOrderView(APIView):
 
         print('Serializer was not Valid')
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class OrderDetailView(APIView):
+
+    def get(self, request: Request, pk: int) -> Response:
+        """Get an order"""
+
+        order:ShopOrder = get_object_or_404(ShopOrder, pk=pk)
+
+        if order.cart.user != request.user and not request.user.is_staff:
+            return Response( {"error": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer: ShopOrderSerializer = ShopOrderSerializer(instance=order)
+        return Response(serializer.data)

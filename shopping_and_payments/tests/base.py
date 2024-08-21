@@ -37,6 +37,10 @@ class BaseTestCase(APITestCase):
         """Return the update products in cart URL"""
         return reverse("update_products_in_cart", args=[cart_id, item_id])
 
+    def order_detail_url(self, pk: int) -> str:
+        """Return the order detail URL"""
+        return reverse("order_detail", args=[pk])
+
     def shopping_cart_url(self, pk: int) -> str:
         """Return the shopping cart URL"""
         return reverse("shopping_cart", args=[pk])

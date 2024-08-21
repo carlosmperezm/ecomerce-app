@@ -73,3 +73,80 @@ class OrderCreationTest(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data.get('cart')[0], 'This field is required.')   
 
+class OrderGetTest(BaseTestCase):
+
+    def setUp(self)->None:
+        OrderStatus.objects.get_or_create(name='Pending')
+        OrderStatus.objects.get_or_create(name='Processing')
+        OrderStatus.objects.get_or_create(name='Completed')
+        OrderStatus.objects.get_or_create(name='Cancelled')
+        return super().setUp()
+
+    def test_get_order(self)->None:
+        user:User = self.create_users(1)[0]
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {user.auth_token}')
+        cart:ShoppingCart = ShoppingCart.objects.create(user=user)
+
+        order:ShopOrder = ShopOrder.objects.create(cart=cart)
+        order.status = OrderStatus.objects.get(name='Processing')
+        order.save()
+
+        response:Response = self.client.get(self.order_detail_url(order.pk))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data)
+        self.assertEqual(response.data.get('status'), 'Processing')
+
+        order.status = OrderStatus.objects.get(name='Completed')
+        order.save()
+        response = self.client.get(self.order_detail_url(order.pk))
+
+        self.assertEqual(response.data.get('status'), 'Completed')
+
+    def test_get_order_as_no_owner(self)->None:
+        users:list[User] = self.create_users(2)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {users[0].auth_token}')
+
+        cart:ShoppingCart = ShoppingCart.objects.create(user=users[1])
+
+        order:ShopOrder = ShopOrder.objects.create(cart=cart)
+        order.status = OrderStatus.objects.get(name='Processing')
+        order.save()
+
+        response:Response = self.client.get(self.order_detail_url(order.pk))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data.get('error'), 'You do not have permission to perform this action.')
+
+    def test_get_order_as_admin(self)->None:
+        user:User = self.create_users(1)[0]
+        user.is_staff = True
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {user.auth_token}')
+
+        cart:ShoppingCart = ShoppingCart.objects.create(user=user)
+
+        order:ShopOrder = ShopOrder.objects.create(cart=cart)
+        order.status = OrderStatus.objects.get(name='Processing')
+        order.save()
+
+        response:Response = self.client.get(self.order_detail_url(order.pk))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data)
+        self.assertEqual(response.data.get('status'), 'Processing')
+
+        order.status = OrderStatus.objects.get(name='Completed')
+        order.save()
+        response = self.client.get(self.order_detail_url(order.pk))
+
+        self.assertEqual(response.data.get('status'), 'Completed')
+
+    def test_get_order_with_invalid_id(self)->None:
+        user:User = self.create_users(1)[0]
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {user.auth_token}')
+
+        response:Response = self.client.get(self.order_detail_url(100))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data.get('detail'), 'No ShopOrder matches the given query.')
+
