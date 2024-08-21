@@ -1,9 +1,15 @@
 """ This module contains the serializers for the shopping_and_payments app """
 
-from rest_framework.serializers import ModelSerializer, ValidationError
+from rest_framework.serializers import (
+    ModelSerializer,
+    ValidationError,
+    SerializerMethodField,
+    Serializer,
+    IntegerField
+)
 
 from shopping_and_payments.models import (
-    CartItems,
+    CartItem,
     OrderStatus,
     ShoppingCart,
     ShopOrder,
@@ -52,12 +58,44 @@ class ShopOrderSerializer(ModelSerializer):
         model = ShopOrder
         fields = "__all__"
 
+class AddToCartSerializer(Serializer):
 
-class CartItemsSerializer(ModelSerializer):
+    product_id: int = IntegerField()
+    quantity: int = IntegerField(min_value=1)
+
+
+    # def validate(self, data: dict) -> dict:
+    #     """Validate the data provided"""
+    #     product_id: int = data.get("product_id")
+    #     quantity: int = data.get("quantity")
+    #
+    #     if not product_id:
+    #         raise ValidationError("Product ID is required.")
+    #
+    #     if not quantity:
+    #         raise ValidationError("Quantity is required.")
+    #
+    #     if quantity < 1:
+    #         raise ValidationError("Quantity must be greater than 0.")
+    #
+    #     return data
+
+
+class CartItemSerializer(ModelSerializer):
     """Cart items serializer"""
+
+    # cart: SerializerMethodField = ShoppingCartSerializer()
+    # product: RelatedField = RelatedField(queryset=CartItem.objects.all())
 
     class Meta:
         """This class is used to define the fields that will be serialized"""
 
-        model = CartItems
+
+        model = CartItem
         fields = "__all__"
+        read_only_fields = ("cart",)
+
+    def get_cart(self, obj: CartItem) -> ShoppingCart:
+        """Get the cart to which the cart item belongs"""
+        return obj.cart
+

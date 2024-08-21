@@ -142,3 +142,69 @@ class ShoppingCartGetTest(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.data)
         print(response.data)
+
+
+class ShoppingCartDeleteTest(BaseTestCase):
+    """Test that a user can delete a shopping cart"""
+
+    def test_delete_cart_as_owner(self) -> None:
+        """Test that a user can delete a shopping cart"""
+
+        self.create_shopping_carts(2)
+
+        number_of_user: int = 1
+        user: User = self.create_users(5)[number_of_user - 1]
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {user.auth_token}")
+
+        response: Response = self.client.delete(self.shopping_cart_url(number_of_user))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertIsNone(response.data)
+
+    def test_delete_cart_not_found(self) -> None:
+        """Test that a user can delete a shopping cart if there is no cart"""
+
+        number_of_user: int = 2
+        user: User = self.create_users(5)[number_of_user - 1]
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {user.auth_token}")
+
+        response: Response = self.client.delete(self.shopping_cart_url(number_of_user))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data.get("detail").code, "not_found")
+        self.assertEqual(
+            response.data.get("detail"), "No ShoppingCart matches the given query."
+        )
+
+    def test_delete_cart_as_no_owner(self) -> None:
+        """Test that a user can delete a shopping cart if is not the owner"""
+
+        self.create_shopping_carts(2)
+        # We access the position 0 to get the first user
+        user: User = self.create_users(3)[0]
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {user.auth_token}")
+
+        # We try to get the cart of the user 2 but we are logged in as user 1
+        response: Response = self.client.delete(self.shopping_cart_url(2))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data.get("error"), "You are not allowed to access this cart."
+        )
+
+    def test_delete_cart_as_admin(self) -> None:
+        """Test that an admin can delete a shopping cart"""
+        self.create_shopping_carts(2)
+        # We access the position 0 to get the first user
+        user: User = self.create_users(5)[4]
+        user.is_staff = True
+        user.save()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {user.auth_token}")
+
+        response: Response = self.client.delete(self.shopping_cart_url(2))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertIsNone(response.data)

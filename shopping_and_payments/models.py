@@ -32,7 +32,9 @@ class ShoppingCart(Model):
     """Shopping cart model"""
 
     user: OneToOneField = OneToOneField("users.User", on_delete=CASCADE)
-    products: ManyToManyField = ManyToManyField("products.Product", through="CartItems")
+    products: ManyToManyField = ManyToManyField(
+        "products.Product", through="CartItem", blank=True, default=None
+    )
     created_at: DateTimeField = DateTimeField(auto_now_add=True)
 
     objects = Manager()
@@ -42,12 +44,14 @@ class ShoppingCart(Model):
         return f"Cart #{self.pk} and belongs to {self.user}"
 
 
-class CartItems(Model):
+class CartItem(Model):
     """Cart items model"""
 
     cart: ForeignKey = ForeignKey(ShoppingCart, on_delete=CASCADE)
-    product: ForeignKey = ForeignKey("products.Product", on_delete=CASCADE)
-    quantity: IntegerField = PositiveIntegerField()
+    product: ForeignKey = ForeignKey(
+        "products.Product", on_delete=CASCADE, null=True, blank=True, default=None
+    )
+    quantity: IntegerField = PositiveIntegerField(default=1)
 
     objects = Manager()
 

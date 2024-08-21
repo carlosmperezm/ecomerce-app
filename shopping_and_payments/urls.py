@@ -7,6 +7,7 @@ from shopping_and_payments.views import (
     ShoppingCartCreationView,
     ShoppingCartDetailView,
     AddProductsToCartView,
+    UpdateProductsInCartView,
 )
 
 urlpatterns = [
@@ -29,5 +30,10 @@ urlpatterns = [
         "add-products-to-cart/<int:pk>/",
         AddProductsToCartView.as_view(),
         name="add_products_to_cart",
+    ),
+    path(
+        "update-products-in-cart/<int:cart_id>/<int:item_id>/",
+        UpdateProductsInCartView.as_view(),
+        name="update_products_in_cart",
     ),
 ]

@@ -7,9 +7,11 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from shopping_and_payments.tests.base import BaseTestCase
-from shopping_and_payments.models import ShoppingCart, CartItems
+from shopping_and_payments.models import ShoppingCart, CartItem
 
 from users.models import User
+
+from products.models import Product
 
 
 class AddCartItemsTest(BaseTestCase):
@@ -22,21 +24,16 @@ class AddCartItemsTest(BaseTestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {user.auth_token}")
 
         number_of_products: int = 3
-        data: dict[str, Any] = {}
+        cart:ShoppingCart=ShoppingCart.objects.create(user=user)
+        response: Response = None
 
-        ShoppingCart.objects.create(user=user)
         for product in self.create_products(number_of_products):
-            data.setdefault(product.pk, randint(1, 100))
+            response = self.client.post(self.cart_items_url(1), {"product_id": product.pk, "quantity": randint(1, 100)})
 
-        response: Response = self.client.post(self.cart_items_url(1), data)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertEqual( response.data.get("message"), "Products added to the cart successfully.")
 
-        cart = ShoppingCart.objects.get(pk=1)
-        cart_items = CartItems.objects.filter(cart=cart)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(
-            response.data.get("message"), "Products added to the cart successfully."
-        )
+        cart_items = CartItem.objects.filter(cart=cart)
         self.assertEqual(cart.products.all().count(), number_of_products)
         self.assertEqual(cart_items.count(), number_of_products)
 
@@ -78,38 +75,33 @@ class AddCartItemsTest(BaseTestCase):
     def test_add_cart_items_with_invalid_product(self) -> None:
         """Test that a user cannot add cart items with an invalid product"""
 
+        wrong_product_id: int = 800
         user: User = self.create_users(1)[0]
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {user.auth_token}")
         ShoppingCart.objects.create(user=user)
-        data: dict[str, Any] = {
-            "800": 1,
-            "invalid_key": 1,
-        }  # invalid_key is not a valid product id , 800 is not a valid product id
+        response: Response = None
 
         for product in self.create_products(2):
-            data.setdefault(product.pk, randint(1, 100))
+            wrong_product_id += 1
+            response: Response = self.client.post(self.cart_items_url(1), {"product_id": wrong_product_id, "quantity": randint(1, 100)})
 
-        response: Response = self.client.post(self.cart_items_url(1), data)
-
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(
-            response.data.get("error"), "Product with id 800 does not exist."
-        )
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+            self.assertEqual(
+                response.data.get("error"), f"Product with id {wrong_product_id} does not exist."
+            )
 
     def test_add_cart_items_with_invalid_quantity(self) -> None:
         """Test that a user cannot add cart items with an invalid quantity"""
+
         user: User = self.create_users(1)[0]
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {user.auth_token}")
         ShoppingCart.objects.create(user=user)
-        data: dict[str, Any] = {}
 
         for product in self.create_products(2):
-            data.setdefault(product.pk, "invalid_quantity {randint(1, 100)}")
+            response: Response = self.client.post(self.cart_items_url(1), {"product_id": product.pk, "quantity": 'invalid_quantity'})
 
-        response: Response = self.client.post(self.cart_items_url(1), data)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data.get("error"), "Quantity must be an integer.")
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertEqual(response.data.get('quantity'), ["A valid integer is required."])
 
     def test_add_cart_items_with_no_data(self) -> None:
         """Test that a user cannot add cart items without data"""
@@ -131,14 +123,10 @@ class AddCartItemsTest(BaseTestCase):
         data: dict[str, Any] = {}
 
         for product in self.create_products(2):
-            data.setdefault(product.pk, randint(1, 100))
+            response: Response = self.client.post(self.cart_items_url(1), {"product_id": product.pk, "quantity": randint(1, 100)})
 
-        response: Response = self.client.post(self.cart_items_url(1), data)
-
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(
-            response.data.get("detail"), "No ShoppingCart matches the given query."
-        )
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+            self.assertEqual( response.data.get("error"), "Shopping cart does not exist.")
 
     def test_add_cart_items_with_no_products(self) -> None:
         """Test that a user cannot add cart items without products"""
@@ -146,11 +134,40 @@ class AddCartItemsTest(BaseTestCase):
         user: User = self.create_users(1)[0]
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {user.auth_token}")
         ShoppingCart.objects.create(user=user)
-        data: dict[str, Any] = {"1": 213, "2": 123}
 
-        response: Response = self.client.post(self.cart_items_url(1), data)
+        response: Response = self.client.post(self.cart_items_url(1), {"product_id": 1, "quantity": 1})
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual( response.data.get("error"), "Product with id 1 does not exist.")
+
+
+class UpdateProductsInCart(BaseTestCase):
+    def test_update_products_in_cart(self) -> None:
+        """Test that a user can update products in a cart"""
+        user: User = self.create_users(1)[0]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {user.auth_token}")
+
+        products: list[Product] = self.create_products(5)
+        cart: ShoppingCart = ShoppingCart.objects.create(user=user)
+        cart.products.set(products, through_defaults={"quantity": 1})
+        item1: CartItem = CartItem.objects.get(cart=cart, product=products[0])
+
+        for item in CartItem.objects.all():
+            print(f"{item.pk} - {item.product} - {item.quantity}")
+
+        data: dict[str, Any] = {"new_product_id": 4, "quantity": 50}
+
+        response: Response = self.client.put(
+            self.update_products_in_cart_url(cart.pk, item1.pk), data
+        )
+
+        print("----------------------------")
+        for item in CartItem.objects.all():
+            item.refresh_from_db()
+            print(f"{item.pk} - {item.product} - {item.quantity}")
+
+        print(response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            response.data.get("error"), "Product with id 1 does not exist."
+            response.data.get("message"), "Products updated in the cart successfully."
         )
