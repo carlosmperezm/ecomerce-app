@@ -5,7 +5,8 @@ from rest_framework.serializers import (
     ValidationError,
     SerializerMethodField,
     Serializer,
-    IntegerField
+    IntegerField,
+    StringRelatedField
 )
 
 from shopping_and_payments.models import (
@@ -28,7 +29,7 @@ class OrderStatusSerializer(ModelSerializer):
 
     def validate_name(self, value: str) -> str:
         """Validate the name of the order status"""
-        if value not in self.PERMITTED_STATUS:
+        if value.lower() not in self.PERMITTED_STATUS:
             raise ValidationError("Invalid status name.")
         return value
 
@@ -51,6 +52,7 @@ class ShoppingCartSerializer(ModelSerializer):
 
 class ShopOrderSerializer(ModelSerializer):
     """Shop order serializer"""
+    status:StringRelatedField = StringRelatedField()
 
     class Meta:
         """This class is used to define the fields that will be serialized"""
@@ -64,28 +66,8 @@ class AddToCartSerializer(Serializer):
     quantity: int = IntegerField(min_value=1)
 
 
-    # def validate(self, data: dict) -> dict:
-    #     """Validate the data provided"""
-    #     product_id: int = data.get("product_id")
-    #     quantity: int = data.get("quantity")
-    #
-    #     if not product_id:
-    #         raise ValidationError("Product ID is required.")
-    #
-    #     if not quantity:
-    #         raise ValidationError("Quantity is required.")
-    #
-    #     if quantity < 1:
-    #         raise ValidationError("Quantity must be greater than 0.")
-    #
-    #     return data
-
-
 class CartItemSerializer(ModelSerializer):
     """Cart items serializer"""
-
-    # cart: SerializerMethodField = ShoppingCartSerializer()
-    # product: RelatedField = RelatedField(queryset=CartItem.objects.all())
 
     class Meta:
         """This class is used to define the fields that will be serialized"""

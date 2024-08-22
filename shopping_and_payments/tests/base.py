@@ -23,6 +23,7 @@ class BaseTestCase(APITestCase):
         # URLs
         self.order_status_url: str = reverse("order_status_create")
         self.create_shopping_cart_url: str = reverse("create_shopping_cart")
+        self.create_order_url:str = reverse('create_order')
         super().setUp()
 
     @override
@@ -35,6 +36,10 @@ class BaseTestCase(APITestCase):
     def update_products_in_cart_url(self, cart_id: int, item_id: int) -> str:
         """Return the update products in cart URL"""
         return reverse("update_products_in_cart", args=[cart_id, item_id])
+
+    def order_detail_url(self, pk: int) -> str:
+        """Return the order detail URL"""
+        return reverse("order_detail", args=[pk])
 
     def shopping_cart_url(self, pk: int) -> str:
         """Return the shopping cart URL"""
